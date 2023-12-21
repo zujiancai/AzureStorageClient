@@ -59,5 +59,16 @@ class JobSchedule(object):
         return self
     
     def after(self, hour, minute, second = 0):
+        '''
+        The schedule semantics is to ensure the job will be executed after the specified time of the day, thus only exact hour/minute/second is supported.
+        '''
         self.after_time = time(hour, minute, second)
         return self
+
+
+def schedule_from_crontab(expression: str):
+    if not expression:
+        return JobSchedule()
+    segments = expression.split(' ')
+    assert(len(segments) == 5)
+    return JobSchedule().for_months(segments[3]).for_days(segments[2]).for_weekdays(segments[4]).after(int(segments[1]), int(segments[0]))

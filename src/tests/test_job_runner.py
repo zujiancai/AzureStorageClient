@@ -33,21 +33,23 @@ class TesterJob(BaseJob):
     def post_loop(self):
         if not 'result' in self.job_states or self.job_states['result'] > 45:
             raise Exception('Invalid result')
-    
-
-class TesterJobSettingsFactory(JobSettingsFactory):
-    def create(self, job_type: str):
-        if 'BaseJob' in job_type:
-            return super().create(job_type)
-        settings = self.create_default(JobSchedule(), TesterJob, job_type, 1)
-        settings.max_failures = 3
-        settings.max_consecutive_failures = 2
-        return settings
 
 
 class TestJobRunner(unittest.TestCase):
     def setUp(self):
-        self.job_runner = JobRunner(TesterJobSettingsFactory(), MockJobData('connection_string'))
+        test_settings = {
+            'BaseJob1': {
+                'job_class': 'batch_job.job_settings.BaseJob',
+                'job_type': 'BaseJob1'
+            },
+            'TestJob1': {
+                'job_class': 'tests.test_job_runner.TesterJob',
+                'job_type': 'TestJob1',
+                'max_failures': 3,
+                'max_consecutive_failures': 2
+            }
+        }
+        self.job_runner = JobRunner(JobSettingsFactory(test_settings), MockJobData('connection_string'))
 
     def validate_info(self, job_id: str, property_names: list[str], expected_values: list, compare_properties: list [tuple[str, str]] = [],
                       states_property_names: list[str] = [], states_expected_values: list = []):
