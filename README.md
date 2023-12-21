@@ -2,6 +2,14 @@
 
 This project is to create a minimal batch job infrastructure to handle small data (fits in memory as a panda dataframe) on a single node. Different job type would be run in a separate process, and treated as singleton (no concurrent processing for the same job type).
 
+## Setup
+
+### Install the Package
+
+```bash
+$ pip install "git+https://github.com/zujiancai/BatchJob.git@main#egg=common&subdirectory=src"
+```
+
 ## Scheduler and Runner
 
 - `BaseJob` is the base class for batch job logic. All job type should extend this class. The entry point is the `run` method which takes a `JobInfo` object and returns a `JobRun` object as result. These methods are required to implement in solid subclasses: `create_items` to populate a list of items to loop through, for the first run generally; `process_one` to handle one item in the list; `post_loop` is optional for actions after all items being handled, for example saving result as a single file.
