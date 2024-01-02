@@ -51,4 +51,3 @@ class MockJobData(JobData):
     def __init__(self, conn_str: str):
         self.info_store = InMemoryTableStore(conn_str, "JobInfo")
         self.run_store = InMemoryTableStore(conn_str, "JobRun")
-    

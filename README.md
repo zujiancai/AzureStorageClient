@@ -4,11 +4,13 @@ This project is to create a minimal batch job infrastructure to handle small dat
 
 ## Setup
 
-### Install the Package
+Install the package with command:
 
 ```bash
-$ pip install "git+https://github.com/zujiancai/BatchJob.git@main#egg=common&subdirectory=src"
+$ pip install "git+https://github.com/zujiancai/BatchJob.git@main#egg=minimal-batch-job&subdirectory=src"
 ```
+
+See under sample folder for usage cases.
 
 ## Scheduler and Runner
 
