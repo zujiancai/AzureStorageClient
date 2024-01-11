@@ -43,10 +43,11 @@ class JobRun(TypedDict):
 
 
 class JobData(object):
-    def __init__(self, conn_str: str):
+    def __init__(self, conn_str: str, temp_dir: str=TEMP_DIR):
         self.info_store = TableStore(conn_str, "JobInfo")
         self.run_store = TableStore(conn_str, "JobRun")
         self.blob_store = BlobStore(conn_str)
+        self.temp_dir = temp_dir
 
     def create_if_not_exist(self):
         self.info_store.create_if_not_exist()
@@ -109,7 +110,7 @@ class JobData(object):
         return consecutive_failure_count, sum(1 for run in all_runs if run['is_error'])
     
     def get_temp_file_path(self, container_name: str, blob_name: str) -> str:
-        dir_path = '{0}/{1}'.format(TEMP_DIR, container_name)
+        dir_path = '{0}/{1}'.format(self.temp_dir, container_name)
         os.makedirs(dir_path, exist_ok=True)
         return dir_path + '/' + blob_name + '.tmp'
     

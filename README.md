@@ -7,12 +7,14 @@ This project is to create a minimal batch job infrastructure to handle small dat
 Install the package with command:
 
 ```bash
-$ pip install "git+https://github.com/zujiancai/BatchJob.git@main#egg=minimal-batch-job&subdirectory=src"
+$ pip install "git+https://github.com/zujiancai/minimal-batch-job.git@main#egg=minimal-batch-job&subdirectory=src"
 ```
 
 See under sample folder for usage cases.
 
-## Scheduler and Runner
+## Design Details
+
+### Scheduler and Runner
 
 - `BaseJob` is the base class for batch job logic. All job type should extend this class. The entry point is the `run` method which takes a `JobInfo` object and returns a `JobRun` object as result. These methods are required to implement in solid subclasses: `create_items` to populate a list of items to loop through, for the first run generally; `process_one` to handle one item in the list; `post_loop` is optional for actions after all items being handled, for example saving result as a single file.
 
@@ -38,9 +40,9 @@ See under sample folder for usage cases.
 
 [Status Transition Chart]
 
-## Data Schemas
+### Data Schemas
 
-### JobInfo for job inputs and intermediate results.
+#### JobInfo for job inputs and intermediate results.
 
 - Table name: JobInfo
 
@@ -59,7 +61,7 @@ class JobInfo(TypedDict):
     update_time: datetime
 ```
 
-### JobRun for job iteration history with end status.
+#### JobRun for job iteration history with end status.
 
 - Table name: JobRun
 
@@ -75,3 +77,24 @@ class JobRun(TypedDict):
     start_time: datetime
     end_time: datetime
 ```
+
+### Test Coverage with Azurite Emulator Enabled
+
+| Name                      |Stmts  |Miss |Cover|
+|---------------------------|-------|-----|-----|
+|batch_job\__init__.py      |     4 |    0| 100%|
+|batch_job\base_job.py      |    91 |    4|  96%|
+|batch_job\blob_store.py    |    48 |   10|  79%|
+|batch_job\job_data.py      |    94 |   18|  81%|
+|batch_job\job_runner.py    |    46 |    5|  89%|
+|batch_job\job_schedule.py  |    53 |    1|  98%|
+|batch_job\job_settings.py  |    59 |    7|  88%|
+|batch_job\table_store.py   |    36 |    0| 100%|
+|tests\__init__.py          |     0 |    0| 100%|
+|tests\mock_data.py         |    41 |    8|  80%|
+|tests\test_base_job.py     |    75 |    0| 100%|
+|tests\test_blob_store.py   |    66 |    2|  97%|
+|tests\test_job_runner.py   |   178 |    1|  99%|
+|tests\test_job_schedule.py |    54 |    0| 100%|
+|tests\test_table_store.py  |    73 |    0| 100%|
+|TOTAL                      |   918 |   56|  94%|

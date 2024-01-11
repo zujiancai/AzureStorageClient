@@ -30,7 +30,7 @@ class TesterJob(BaseJob):
             self.job_states['result'] += item
         return True
     
-    def post_loop(self):
+    def post_loop(self, run_date: datetime):
         if not 'result' in self.job_states or self.job_states['result'] > 45:
             raise Exception('Invalid result')
 

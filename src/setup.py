@@ -1,17 +1,17 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 from batch_job import __version__
 
 
 setup(
-    name='minimal_batch_job',
+    name='minimal-batch-job',
     version=__version__,
 
-    url='https://github.com/zujiancai/BatchJob',
+    url='https://github.com/zujiancai/minimal-batch-job',
     author='Zujian Cai',
     author_email='jixproject@gmail.com',
 
-    py_modules=['batch_job'],
+    packages=find_packages(exclude=['tests', 'tests.*']),
 
     install_requires=[
         'azure-data-tables',

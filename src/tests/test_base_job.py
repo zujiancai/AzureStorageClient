@@ -27,8 +27,8 @@ class TestBaseJob(unittest.TestCase):
         run_date = datetime(2022, 1, 1, 12, 30)
         revision = 0
         partition_key, row_key, date = BaseJob.create_keys(job_type, job_version, run_date, revision)
-        expected_partition_key = "testjob_1001"
-        expected_row_key = "20220101_1000_testjob_1001"
+        expected_partition_key = "testjob_1000001"
+        expected_row_key = "20220101_1000000_testjob_1000001"
         expected_date = datetime(2022, 1, 1, 0, 0, 0)
         self.assertEqual(partition_key, expected_partition_key)
         self.assertEqual(row_key, expected_row_key)

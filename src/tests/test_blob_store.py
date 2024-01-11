@@ -91,13 +91,13 @@ class TestBlobStore(unittest.TestCase):
         lease1 = self.blob_store.lease_blob(self.container_name, blob_name)
         if not lease1:
             self.blob_store.upload(self.container_name, blob_name, self.file_path_original)
-            lease1 = self.blob_store.lease_blob(self.container_name, blob_name, 1)
+            lease1 = self.blob_store.lease_blob(self.container_name, blob_name, 10)
 
         self.assertIsNotNone(lease1)
 
         # try lease the blob again and will fail for race condition
-        with self.assertRaises(HttpResponseError):
-            lease2 = self.blob_store.lease_blob(self.container_name, blob_name, 1)
+        lease2 = self.blob_store.lease_blob(self.container_name, blob_name, 10)
+        self.assertIsNone(lease2)
 
         # after lease1 is released, lease2 can be acquired
         lease1.release()

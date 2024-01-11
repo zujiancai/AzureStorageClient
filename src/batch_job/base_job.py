@@ -36,17 +36,21 @@ class BaseJob(object):
     def get_type(self) -> str:
         return self.__class__.__name__
     
-    def get_required_jobs(self) -> dict[str, str]:
+    '''
+    
+    '''
+    def get_required_jobs(self, run_date: datetime) -> dict[str, str]:
         return {}
     
-    def get_required_data(self) -> dict[str, bool]:
+    def get_required_data(self, run_date: datetime) -> dict[str, bool]:
         return {}
 
     def check_dependencies(self) -> bool:
         if self.job_info['status'] != JobStatus.Pending:
             return True
+        job_date = self.job_inputs['run_date']
         # Check required jobs
-        for required_job_id, expected_status in self.get_required_jobs().items():
+        for required_job_id, expected_status in self.get_required_jobs(job_date).items():
             required_job = self.job_data.get_info(required_job_id)
             if not required_job:
                 self.message = 'Job {0} depends on job {1} to be {2} but it does not exist.'.format(self.get_type(), required_job_id, expected_status)
@@ -55,7 +59,7 @@ class BaseJob(object):
                 self.message = 'Job {0} depends on job {1} to be {2} but it is {3}.'.format(self.get_type(), required_job_id, expected_status, required_job['status'])
                 return False
         # Check required data
-        for required_data, expect_to_exist in self.get_required_data().items():
+        for required_data, expect_to_exist in self.get_required_data(job_date).items():
             # required_data = None #store.load_df(required_data_id)
             # if not type(required_data) is pd.DataFrame:
             #     return False, 'Job {0} is skipped as required data {1} is missing.'.format(self.get_type(), required_data_id)
@@ -65,22 +69,23 @@ class BaseJob(object):
 
     def load_items(self, last_processed: str) -> (bool, list):
         '''
-        Used to populate the list to loop through. 
+        Optional for subclass to override. It is used to populate the list to loop through.
         - Return[0]: a flag of true if all data has been loaded, false otherwise (use last_processed in states to load more in next iteration).
-        - Return[1]: a list of items to loop through.
+        - Return[1]: a list of items to loop through. If it is overrided to return a non-empty list, process_item must be overrided as well.
         '''
         return True, []
 
     def process_item(self, work_item) -> bool:
         '''
-        Logic to process one item in the list. Return True if the item is processed successfully, false if it is skipped.
-         - if the item could not be processed and need to be retried later, raise an exception to exit current iteration.
+        Optional for subclass to override. Logic to process one item in the list. Return True if the item is processed successfully, false if it is skipped.
+         - If the item could not be processed and need to be retried later, raise an exception to exit current iteration.
+         - The default behavior is to throw a not implemented error.
         '''
         raise NotImplementedError('process_one is not implemented.')
 
-    def post_loop(self):
+    def post_loop(self, run_date: datetime):
         '''
-        Post-loop handling.
+        Optional for subclass to override. It is for post-loop handling, e.g. saving final result to blob.
         '''
         pass
     
@@ -117,7 +122,7 @@ class BaseJob(object):
             if self.job_inputs['process_interval'] > 0:
                 time.sleep(self.job_inputs['process_interval'])
 
-        self.post_loop()
+        self.post_loop(self.job_inputs['run_date'])
 
         if not self.message: # if no message, we infer that all items in the list are handled.
             if all_loaded:
@@ -130,7 +135,7 @@ class BaseJob(object):
         return self.save_results(True)
     
     def save_results(self, success: bool) -> (bool, str):
-        self.job_info['inputs'] = pickle.dumps(self.job_inputs)
+        # self.job_info['inputs'] = pickle.dumps(self.job_inputs) # inputs should not change
         self.job_info['states'] = pickle.dumps(self.job_states)
         self.job_info['update_time'] = datetime.utcnow()
 
