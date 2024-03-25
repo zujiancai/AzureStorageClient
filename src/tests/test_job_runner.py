@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pickle
 import time
 
@@ -79,7 +79,7 @@ class TestJobRunner(unittest.TestCase):
         # Create a job info
         job_type = 'BaseJob1'
         revision = 2
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)
         info['status'] = JobStatus.Suspended
@@ -97,9 +97,10 @@ class TestJobRunner(unittest.TestCase):
         # Run the job as new
         job_type = 'BaseJob1'
         self.job_runner.run(job_type)
+        settings = self.job_runner.settings_factory.create(job_type)
 
         # Check job and run
-        job_type_id, job_id, run_date = BaseJob.create_keys(job_type, 1, datetime.utcnow(), 0)
+        job_id = settings.get_job_id(datetime.now(timezone.utc), 0)
         self.assertTrue(job_id in self.job_runner.run_success)
         info = self.validate_info(job_id, ['status', 'revision'], [JobStatus.Completed, 0])
         self.validate_run(job_id, 1, ['end_status', 'end_time'], [JobStatus.Completed, info['update_time']])
@@ -108,7 +109,9 @@ class TestJobRunner(unittest.TestCase):
         # Run the job as new
         job_type = 'TestJob1'
         self.job_runner.run(job_type)
-        job_type_id, job_id, run_date = BaseJob.create_keys(job_type, 1, datetime.utcnow(), 0)
+        settings = self.job_runner.settings_factory.create(job_type)
+
+        job_id = settings.get_job_id(datetime.now(timezone.utc), 0)
         info1 = self.validate_info(job_id, ['status'], [JobStatus.Suspended], [], ['last_processed', 'result', 'processed'], ['3', 6, 3])
         self.validate_run(job_id, 1, ['end_status', 'end_time'], [JobStatus.Suspended, info1['update_time']])
         time.sleep(0.2)
@@ -127,7 +130,7 @@ class TestJobRunner(unittest.TestCase):
     def test_run_existing_tester_job_with_error(self):
         # Create a job info
         job_type = 'TestJob1'
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 1
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)
@@ -148,7 +151,7 @@ class TestJobRunner(unittest.TestCase):
     def test_existing_tester_job_fail_with_max_consecutive_failures(self):
         # Create a job info
         job_type = 'TestJob1'
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 2
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)
@@ -168,7 +171,7 @@ class TestJobRunner(unittest.TestCase):
     def test_existing_tester_job_fail_with_max_failures(self):
         # Create a job info
         job_type = 'TestJob1'
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 3
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)
@@ -199,7 +202,7 @@ class TestJobRunner(unittest.TestCase):
     def test_existing_tester_job_expire(self):
         # Create a job info
         job_type = 'TestJob1'
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 4
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)
@@ -218,7 +221,7 @@ class TestJobRunner(unittest.TestCase):
     def test_existing_tester_job_for_current_date_ended(self):
         # Create a job info
         job_type = 'TestJob1'
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 5
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)
@@ -239,7 +242,7 @@ class TestJobRunner(unittest.TestCase):
     def test_existing_tester_job_fail_with_skips(self):
         # Create a job info
         job_type = 'TestJob1'
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 6
         settings = self.job_runner.settings_factory.create(job_type)
         info = settings.create_info(revision, current_time)

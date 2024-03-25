@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from batch_job.job_data import JobData, JobStatus
 from batch_job.job_settings import JobSettingsFactory, JobSettings
@@ -29,16 +29,16 @@ class JobRunner(object):
 
     def internal_run(self, settings: JobSettings):
         # Get all existing job infos for the given job settings
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         revision = 0
-        job_type_id, job_id, run_date = settings.job_class.create_keys(settings.job_type, settings.job_version, current_time, revision)
-        all_infos = self.job_data.list_infos(job_type_id)
+        all_infos = self.job_data.list_infos(settings.get_job_partition())
 
         # Check if any existing active, pending, or suspended job to resume, to fail or to expire.
         job_to_run = None
-        latest_job = None
+        new_job_id = settings.get_job_id(current_time, revision)
         for info in all_infos:
-            latest_job = info if not latest_job or info['RowKey'] > latest_job['RowKey'] else latest_job
+            if new_job_id == info['RowKey']:
+                new_job_id = None # Set None to notify the new job id has been created.
             if not JobStatus.is_end_state(info['status']):
                 # check and set failure
                 consecutive_failure_count, total_failure_count = self.job_data.summarize_failures(info)
@@ -53,10 +53,9 @@ class JobRunner(object):
                 elif not job_to_run:
                     job_to_run = settings.job_class(self.job_data, info)
 
-        # If no existing to resume, check the job schedule to see if a new job should be created.
-        if not job_to_run:
-            # Check if the job is due, and has not been created yet, if so, create a new job.
-            if settings.job_schedule.check(current_time) and (not latest_job or latest_job['RowKey'] < job_id):
+        # If no existing to resume and the new job id has not been created, check the job schedule to see if a new job should be created.
+        if not job_to_run and new_job_id:
+            if settings.job_schedule.check(current_time):
                 job_to_run = settings.job_class(self.job_data, settings.create_info(revision, current_time))
 
         # At most one job will be executed. After the job is executed, update job info and job run.

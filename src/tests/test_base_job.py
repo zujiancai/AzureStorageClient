@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pickle
 from unittest.mock import MagicMock
 
@@ -17,47 +17,39 @@ class TestBaseJob(unittest.TestCase):
             inputs=pickle.dumps({'run_date': datetime(2022, 1, 1, 12, 30), 'batch_size': 1000, 'process_interval': 0}),
             states=pickle.dumps({"last_processed": "", "processed": 0, "skipped": 0}),
             status=JobStatus.Pending,
-            create_time=datetime.utcnow() - timedelta(hours=1),
-            update_time=datetime.utcnow())
+            create_time=datetime.now(timezone.utc) - timedelta(hours=1),
+            update_time=datetime.now(timezone.utc))
         self.job = BaseJob(self.job_data, self.job_info)
-
-    def test_create_keys(self):
-        job_type = "testjob"
-        job_version = 1
-        run_date = datetime(2022, 1, 1, 12, 30)
-        revision = 0
-        partition_key, row_key, date = BaseJob.create_keys(job_type, job_version, run_date, revision)
-        expected_partition_key = "testjob_1000001"
-        expected_row_key = "20220101_1000000_testjob_1000001"
-        expected_date = datetime(2022, 1, 1, 0, 0, 0)
-        self.assertEqual(partition_key, expected_partition_key)
-        self.assertEqual(row_key, expected_row_key)
-        self.assertEqual(date, expected_date)
 
     def test_get_type(self):
         self.assertEqual(self.job.get_type(), "BaseJob")
 
-    def test_check_dependencies_missing_required_job(self):
+    def test_check_dependencies_success(self):
+        self.job_info['status'] = JobStatus.Suspended
+        self.job.list_expected = MagicMock(return_value=[('test_container1', 'test_blob1'), ('test_container2', 'test_blob2')])
+        self.job.list_not_expected = MagicMock(return_value=[('test_container1', 'test_blob3')])
+        self.assertTrue(self.job.check_dependencies(datetime.now(timezone.utc)))
+        self.assertEqual(self.job_info['status'], JobStatus.Active)
+
+    def test_check_dependencies_missing_expected_data(self):
         self.job_info['status'] = JobStatus.Pending
-        self.job.get_required_jobs = MagicMock(return_value={"20230101_1006_TestJob_1002": JobStatus.Active})
-        self.assertFalse(self.job.check_dependencies())
-        self.assertEqual(self.job.message, "Job BaseJob depends on job 20230101_1006_TestJob_1002 to be active but it does not exist.")
+        self.job.list_expected = MagicMock(return_value=[('test_container1', 'test_blob3')])
+        self.assertFalse(self.job.check_dependencies(datetime.now(timezone.utc)))
+        self.assertEqual(self.job.message, 'Job BaseJob expects data test_container1/test_blob3 but it does not exist.')
         self.assertEqual(self.job_info['status'], JobStatus.Pending)
 
-    def test_check_dependencies_incorrect_required_job_status(self):
-        self.job_info['status'] = JobStatus.Pending
-        self.job.get_required_jobs = MagicMock(return_value={"20230101_1006_TestJob_1002": JobStatus.Completed})
-        self.job_data.get_info = MagicMock(return_value={"status": JobStatus.Failed})
-        self.assertFalse(self.job.check_dependencies())
-        self.assertEqual(self.job.message, "Job BaseJob depends on job 20230101_1006_TestJob_1002 to be completed but it is failed.")
-        self.assertEqual(self.job_info['status'], JobStatus.Pending)
+    def test_check_dependencies_having_unexpected_data(self):
+        self.job_info['status'] = JobStatus.Suspended
+        self.job.list_not_expected = MagicMock(return_value=[('test_container2', 'test_blob2')])
+        self.assertFalse(self.job.check_dependencies(datetime.now(timezone.utc)))
+        self.assertEqual(self.job.message, "Job BaseJob does not expect data test_container2/test_blob2 but it exists.")
+        self.assertEqual(self.job_info['status'], JobStatus.Suspended)
 
     def test_internal_run_dependencies_not_met(self):
         self.job.check_dependencies = MagicMock(return_value=False)
         self.job.save_results = MagicMock(return_value=(True, ""))
         self.assertTrue(self.job.internal_run())
         self.job.check_dependencies.assert_called_once()
-        self.job.save_results.assert_called_once_with(True)
 
     def test_internal_run_dependencies_met(self):
         self.job.check_dependencies = MagicMock(return_value=True)

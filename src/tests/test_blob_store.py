@@ -36,8 +36,7 @@ class TestBlobStore(unittest.TestCase):
 
         # delete the blob and downloaded file to clean up
         self.blob_store.delete(self.container_name, blob_name)
-        blob = self.blob_store.create_blob_client(self.container_name, blob_name)
-        self.assertFalse(blob.exists())
+        self.assertFalse(self.blob_store.exists(self.container_name, blob_name))
 
         os.remove(file_path_download)
 
@@ -46,16 +45,14 @@ class TestBlobStore(unittest.TestCase):
 
         # upload a blob
         self.blob_store.upload(self.container_name, blob_name, self.file_path_original)
-        blob = self.blob_store.create_blob_client(self.container_name, blob_name)
-        self.assertTrue(blob.exists())
+        self.assertTrue(self.blob_store.exists(self.container_name, blob_name))
 
         # upload again and will fail
         self.assertFalse(self.blob_store.upload(self.container_name, blob_name, self.file_path_original))
 
         # delete the blob to clean up
         self.blob_store.delete(self.container_name, blob_name)
-        blob = self.blob_store.create_blob_client(self.container_name, blob_name)
-        self.assertFalse(blob.exists())
+        self.assertFalse(self.blob_store.exists(self.container_name, blob_name))
 
     def test_download_non_existing_blob(self):
         blob_name = 'notexistingblob1'

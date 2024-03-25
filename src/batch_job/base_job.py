@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import pickle
 import time
 from typing_extensions import TypedDict
@@ -27,47 +27,32 @@ class BaseJob(object):
         self.job_info = job_info
         self.job_data = job_data
 
-    @staticmethod
-    def create_keys(job_type: str, job_version: int, run_date: datetime, revision: int) -> (str, str, datetime):
-        partition_key = '{0}_{1}'.format(job_type, job_version + VERSION_OFFSET)
-        row_key = '{0}_{1}_{2}'.format(run_date.strftime('%Y%m%d'), revision + REVISION_OFFSET, partition_key)
-        return partition_key, row_key, run_date.replace(hour=0, minute=0, second=0, microsecond=0)
-
     def get_type(self) -> str:
         return self.__class__.__name__
     
-    '''
+    def list_expected(self, run_date: datetime) -> list[tuple[str, str]]:
+        return []
     
-    '''
-    def get_required_jobs(self, run_date: datetime) -> dict[str, str]:
-        return {}
-    
-    def get_required_data(self, run_date: datetime) -> dict[str, bool]:
-        return {}
+    def list_not_expected(self, run_date: datetime) -> list[tuple[str, str]]:
+        return []
 
-    def check_dependencies(self) -> bool:
-        if self.job_info['status'] != JobStatus.Pending:
+    def check_dependencies(self, run_date: datetime) -> bool:
+        if not JobStatus.is_end_state(self.job_info['status']):
+            # Check required data
+            for expected_data_id in self.list_expected(run_date):
+                if not self.job_data.file_exists(*expected_data_id):
+                    self.message = 'Job {0} expects data {1}/{2} but it does not exist.'.format(self.get_type(), *expected_data_id)
+                    return False
+            # Check unexpected data
+            for not_expected_data_id in self.list_not_expected(run_date):
+                if self.job_data.file_exists(*not_expected_data_id):
+                    self.message = 'Job {0} does not expect data {1}/{2} but it exists.'.format(self.get_type(), *not_expected_data_id)
+                    return False
+            self.job_info['status'] = JobStatus.Active
             return True
-        job_date = self.job_inputs['run_date']
-        # Check required jobs
-        for required_job_id, expected_status in self.get_required_jobs(job_date).items():
-            required_job = self.job_data.get_info(required_job_id)
-            if not required_job:
-                self.message = 'Job {0} depends on job {1} to be {2} but it does not exist.'.format(self.get_type(), required_job_id, expected_status)
-                return False
-            elif required_job['status'] != expected_status:
-                self.message = 'Job {0} depends on job {1} to be {2} but it is {3}.'.format(self.get_type(), required_job_id, expected_status, required_job['status'])
-                return False
-        # Check required data
-        for required_data, expect_to_exist in self.get_required_data(job_date).items():
-            # required_data = None #store.load_df(required_data_id)
-            # if not type(required_data) is pd.DataFrame:
-            #     return False, 'Job {0} is skipped as required data {1} is missing.'.format(self.get_type(), required_data_id)
-            pass
-        self.job_info['status'] = JobStatus.Active
-        return True
+        return False
 
-    def load_items(self, last_processed: str) -> (bool, list):
+    def load_items(self, last_processed: str) -> tuple[bool, list]:
         '''
         Optional for subclass to override. It is used to populate the list to loop through.
         - Return[0]: a flag of true if all data has been loaded, false otherwise (use last_processed in states to load more in next iteration).
@@ -91,7 +76,7 @@ class BaseJob(object):
     
     def run(self):
         try:
-            self.start_time = datetime.utcnow()
+            self.start_time = datetime.now(timezone.utc)
             return self.internal_run()
         except Exception as err:
             self.job_info['status'] = JobStatus.Suspended
@@ -99,8 +84,8 @@ class BaseJob(object):
             return self.save_results(False)
 
     def internal_run(self):
-        if not self.check_dependencies():
-            return self.save_results(True)
+        if not self.check_dependencies(self.job_inputs['run_date']):
+            return True # If job is skipped due to dependencies or in not runnable status, return as success.
 
         all_loaded, work_items = self.load_items(self.job_states['last_processed'])
         
@@ -134,10 +119,10 @@ class BaseJob(object):
 
         return self.save_results(True)
     
-    def save_results(self, success: bool) -> (bool, str):
+    def save_results(self, success: bool) -> tuple[bool, str]:
         # self.job_info['inputs'] = pickle.dumps(self.job_inputs) # inputs should not change
         self.job_info['states'] = pickle.dumps(self.job_states)
-        self.job_info['update_time'] = datetime.utcnow()
+        self.job_info['update_time'] = datetime.now(timezone.utc)
 
         self.job_data.complete_run(success, self.job_info, self.message, self.start_time)
         return success

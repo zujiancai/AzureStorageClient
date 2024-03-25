@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 
 
 def check_cron(expression: str, number: int):
@@ -35,7 +35,7 @@ class JobSchedule(object):
 
     def check(self, base_time: datetime = None):
         if not base_time:
-            base_time = datetime.utcnow()
+            base_time = datetime.now(timezone.utc)
         if self.in_months and not check_cron(self.in_months, base_time.month):
             return False
         if self.on_days and not check_cron(self.on_days, base_time.day):

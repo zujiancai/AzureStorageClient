@@ -32,6 +32,10 @@ class BlobStore:
                 data.write(download_stream.readall())
             return True
         return False
+    
+    def exists(self, container_name, blob_name) -> bool:
+        blob_client = self.create_blob_client(container_name, blob_name)
+        return blob_client.exists()
 
     def delete(self, container_name, blob_name) -> bool:
         blob_client = self.create_blob_client(container_name, blob_name)

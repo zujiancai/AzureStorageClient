@@ -99,7 +99,7 @@ class JobData(object):
     '''
     Get the number of consecutive failures and total number of failures for a job.
     '''
-    def summarize_failures(self, job_info: JobInfo) -> (int, int):
+    def summarize_failures(self, job_info: JobInfo) -> tuple[int, int]:
         all_runs = self.run_store.query_entities(job_info['RowKey'])
         consecutive_failure_count = 0
         for run in sorted(all_runs, key=lambda x: x['start_time'], reverse=True):
@@ -124,6 +124,15 @@ class JobData(object):
         file_path = self.get_temp_file_path(container_name, blob_name)
         if self.blob_store.download(container_name, blob_name, file_path):
             return file_path
+        
+    def delete_file(self, container_name: str, blob_name: str):
+        file_path = self.get_temp_file_path(container_name, blob_name)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return self.blob_store.delete(container_name, blob_name)
+    
+    def file_exists(self, container_name: str, blob_name: str) -> bool:
+        return self.blob_store.exists(container_name, blob_name)
         
     def lease_job(self, job_type: str, lease_duration: int = 15):
         return self.blob_store.lease_blob('BatchJobAdmin', job_type, lease_duration)
