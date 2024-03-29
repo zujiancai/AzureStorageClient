@@ -1,6 +1,5 @@
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.data.tables import TableServiceClient, TableClient, UpdateMode
-from typing_extensions import TypedDict
 
 
 class TableStore(object):
@@ -16,14 +15,14 @@ class TableStore(object):
         with TableServiceClient.from_connection_string(self.connection_string) as table_service_client:
             return table_service_client.delete_table(table_name=self.table_name)
         
-    def insert_entity(self, data: TypedDict) -> bool:
+    def insert_entity(self, data) -> bool:
         with TableClient.from_connection_string(self.connection_string, self.table_name) as table:
             try:
                 return table.create_entity(entity=data)
             except ResourceExistsError:
                 return None
 
-    def upsert_entity(self, data: TypedDict, update_mode: UpdateMode = UpdateMode.REPLACE):
+    def upsert_entity(self, data, update_mode: UpdateMode = UpdateMode.REPLACE):
         with TableClient.from_connection_string(self.connection_string, self.table_name) as table:
             return table.upsert_entity(mode=update_mode, entity=data)
 

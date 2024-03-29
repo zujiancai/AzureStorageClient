@@ -9,7 +9,7 @@ class JobRunner(object):
         self.settings_factory = settings_factory
         self.job_data = job_data
 
-    def run(self, friendly_job_name: str):
+    def run(self, friendly_job_name: str, revision: int = 0):
         # Resolve the friendly job name to JobSettings
         settings = self.settings_factory.create(friendly_job_name)
         self.run_success = []
@@ -21,16 +21,15 @@ class JobRunner(object):
             lease = self.job_data.lease_job(settings.job_type)
             if lease:
                 try:
-                    self.internal_run(settings)
+                    self.internal_run(settings, revision)
                 finally:
                     lease.release()
         else:
-            self.internal_run(settings)
+            self.internal_run(settings, revision)
 
-    def internal_run(self, settings: JobSettings):
+    def internal_run(self, settings: JobSettings, revision: int):
         # Get all existing job infos for the given job settings
         current_time = datetime.now(timezone.utc)
-        revision = 0
         all_infos = self.job_data.list_infos(settings.get_job_partition())
 
         # Check if any existing active, pending, or suspended job to resume, to fail or to expire.

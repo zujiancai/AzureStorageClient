@@ -120,10 +120,12 @@ class JobData(object):
             return self.blob_store.upload(container_name, blob_name, file_path)
         return False
     
-    def download_file(self, container_name: str, blob_name: str) -> str:
+    def download_file(self, container_name: str, blob_name: str, load_data_func: Callable[[str], object]) -> object:
         file_path = self.get_temp_file_path(container_name, blob_name)
-        if self.blob_store.download(container_name, blob_name, file_path):
-            return file_path
+        if not os.path.exists(file_path):
+            self.blob_store.download(container_name, blob_name, file_path)
+        if os.path.exists(file_path) and load_data_func:
+            return load_data_func(file_path)
         
     def delete_file(self, container_name: str, blob_name: str):
         file_path = self.get_temp_file_path(container_name, blob_name)
