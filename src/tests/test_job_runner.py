@@ -96,13 +96,28 @@ class TestJobRunner(unittest.TestCase):
     def test_run_new_base_job(self):
         # Run the job as new
         job_type = 'BaseJob1'
-        self.job_runner.run(job_type)
+        revision = 8
+        self.job_runner.run(job_type, revision)
         settings = self.job_runner.settings_factory.create(job_type)
 
         # Check job and run
-        job_id = settings.get_job_id(datetime.now(timezone.utc), 0)
+        job_id = settings.get_job_id(datetime.now(timezone.utc), revision)
         self.assertTrue(job_id in self.job_runner.run_success)
-        info = self.validate_info(job_id, ['status', 'revision'], [JobStatus.Completed, 0])
+        info = self.validate_info(job_id, ['status', 'revision'], [JobStatus.Completed, revision])
+        self.validate_run(job_id, 1, ['end_status', 'end_time'], [JobStatus.Completed, info['update_time']])
+
+    def test_run_new_base_job_for_given_date(self):
+        # Run the job as new
+        job_type = 'BaseJob1'
+        revision = 3
+        run_date = datetime(2022, 2, 22, tzinfo=timezone.utc)
+        self.job_runner.run(job_type, revision, run_date)
+        settings = self.job_runner.settings_factory.create(job_type)
+
+        # Check job and run
+        job_id = settings.get_job_id(run_date, revision)
+        self.assertTrue(job_id in self.job_runner.run_success)
+        info = self.validate_info(job_id, ['status', 'revision'], [JobStatus.Completed, revision])
         self.validate_run(job_id, 1, ['end_status', 'end_time'], [JobStatus.Completed, info['update_time']])
 
     def test_run_new_tester_job_and_resume_to_completion(self):
